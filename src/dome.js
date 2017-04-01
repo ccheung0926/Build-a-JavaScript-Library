@@ -96,6 +96,35 @@ window.dome = (function(){
 			return -1;
 		}
 	}
+	// adjusting attribute
+	Dome.prototype.attr = function(attr, val){
+		if(typeof val !== "undefined"){
+			return this.forEach(function(el){
+				el.setAttribute(attr, val);
+			});
+		}
+		else{
+			return this.mapOne(function(el){
+				return el.getAttribute(attr);
+			});
+		}
+	}
+	// append and prepend
+	// expect els to be a Dome object
+	Dome.prototype.append = function(els){
+		this.forEach(function(parEl, i){
+			els.forEach(function(childEl){
+				// if appending the els to more than one element
+				// we need to clone them
+				// but we dont want to clone the nodes the first time they are appended
+				// only subsequent times
+				if(i > 0){
+					childEl = childEl.cloneNode(true);
+				}
+				parEl.appendChild(childEl);
+			});
+		});
+	}
 	// -----------------
 	var dome = {
 		get: function(selector){
@@ -116,6 +145,28 @@ window.dome = (function(){
 				els = [selector];
 			}
 			return new Dome(els);
+		},
+		// create elements
+		create: function(tagName, attrs){
+			var el = new Dome([document.createElement(tagName)]);
+			if(attrs){
+				if(attrs.className){
+					el.addClass(attrs.className);
+					// keeps them from being applied as attributes 
+					// when we loop over the rest of the keys in attrs
+					delete attrs.className;
+				}
+			}
+			if(attrs.text){
+				el.text(attrs.text);
+				delete attrs.text;
+			}
+			for(var key in attrs){
+				if(attrs.hasOwnProperty(key)){
+					el.attr(key, attrs[key]);
+				}
+			}
+			return el;
 		}
 	};
 	return dome;
