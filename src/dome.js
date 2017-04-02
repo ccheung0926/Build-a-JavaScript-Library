@@ -1,3 +1,15 @@
+	// fixing an IE Bug -- assume the worst browser we deal with is IE8
+	//  IE8 doesn't support the Array method-- indexof, we will use it in removeClass
+	if(typeof Array.prototype.indexOf !== "function"){
+		Array.prototype.indexOf = function(item){
+			for(var i = 0; i < this.length; i++){
+				if(this[i] === item){
+					return i;
+				}
+			}
+			return -1;
+		}
+	}
 window.dome = (function(){
 	function Dome(els){
 		for(var i = 0; i < els.length; i++){
@@ -59,7 +71,7 @@ window.dome = (function(){
 		}
 	}
 	// add and remove class, classes = string or array of class names
-	Dome.property.addClass = function(classes){
+	Dome.prototype.addClass = function(classes){
 		var className = "";
 		if(typeof classes !== undefined){
 			for(var i = 0; i < classes.length; i++){
@@ -84,18 +96,6 @@ window.dome = (function(){
 		});
 	}
 	// -----------------
-	// fixing an IE Bug -- assume the worst browser we deal with is IE8
-	//  IE8 doesn't support the Array method-- indexof, we will use it in removeClass
-	if(typeof Array.prototype.indexOf !== "function"){
-		Array.prototype.indexOf = function(item){
-			for(var i = 0; i < this.length; i++){
-				if(this[i] === item){
-					return i;
-				}
-			}
-			return -1;
-		}
-	}
 	// adjusting attribute
 	Dome.prototype.attr = function(attr, val){
 		if(typeof val !== "undefined"){
@@ -124,6 +124,82 @@ window.dome = (function(){
 				parEl.appendChild(childEl);
 			});
 		});
+	}
+	/*
+	if you sequentially prepend a list of elements to another element, 
+	they’ll end up in reverse order. Since we can’t forEach backwards, 
+	I’m going through the loop backwards with a for loop. 
+	Again, we’ll clone the node if this isn’t the first parent we’re appending to.
+	*/
+	Dome.prototype.prepend = function(els){
+		return this.forEach(function(parEl, i){
+			for(var j = els.length - 1; j > -1; j--){
+				//childEl = (i > 0) ? els[j].cloneNode(true) : els[j];
+				var childEL;
+				if(i > 0){
+					childEL = els[j].cloneNode(true);
+				}
+				else{
+					childEL = els[j];
+				}
+				// inertBefore(newElement, Element_That_You_Want_To_Insert_Before)
+				parEl.insertBefore(childEL, parEl.firstChild);
+			}
+		});
+	}
+	// remove
+	/*
+	Just iterate through the nodes and call the removeChild method on each element’s parentNode. 
+	The beauty here (all thanks to the DOM) is that this Dome object will still work fine
+	*/
+	Dome.prototype.remove = function(){
+		return this.forEach(function(el){
+			return el.parentNode.removeChild(el);
+		});
+	}
+	// events
+	// IE 8 uses the old IE events, so we will have to check for that.
+	Dome.prototype.on = function(){
+		// if addEventListener exist
+		if(document.addEventListener){
+			return function(evt, fn){
+				return this.forEach(function(el){
+					el.addEventListener(evt, fn, false);
+				});
+			}
+		}
+		else{
+			// otherwise, we check for document.attachEvent or fall back to DOM 0 events
+			return function(evt, fn){
+				return this.forEach(function(el){
+					el["on" + evt] = fn;
+				});
+			}
+		}
+	}
+	// off function--unhook event handlers
+	Dome.prototype.off = function(){
+		if(document.removeEventListener){
+			return function(evt, fn){
+				return this.forEach(function(el){
+					el.removeEventListener(evt, fn, false);
+				});
+			}
+		}
+		else if(document.detachEvent){
+			return function(evt, fn){
+				return this.forEach(function(el){
+					el.detachEvent("on" + evt, fn);
+				});
+			}
+		}
+		else{
+			return function(evt, fn){
+				this.forEach(function(el){
+					el["on" + evt] = null;
+				});
+			}
+		}
 	}
 	// -----------------
 	var dome = {
